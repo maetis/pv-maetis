@@ -493,7 +493,7 @@ export default function App() {
     // ── Share Target : récupérer le fichier audio partagé
     const readSharedAudio = async () => {
       try {
-        const cache    = await caches.open("share-target-cache-v2");
+        const cache    = await caches.open("share-target-cache-v3");
         const response = await cache.match("/shared-audio");
         if (response) {
           const blob = await response.blob();
