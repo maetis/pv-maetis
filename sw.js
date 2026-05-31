@@ -1,14 +1,10 @@
-// Version 3 — se désinstalle si obsolète
-const VERSION = "v3";
-const SHARE_CACHE = "share-target-cache-v3";
+const VERSION = "v4";
+const SHARE_CACHE = "share-target-cache-v4";
 
-self.addEventListener("install", e => {
-  self.skipWaiting();
-});
+self.addEventListener("install", e => self.skipWaiting());
 
 self.addEventListener("activate", e => {
   e.waitUntil((async () => {
-    // Supprimer tous les anciens caches
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => k !== SHARE_CACHE).map(k => caches.delete(k)));
     await clients.claim();
@@ -34,20 +30,30 @@ self.addEventListener("fetch", e => {
           });
           const cache = await caches.open(SHARE_CACHE);
           await cache.put("/shared-audio", resp);
-
-          const allClients = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
-          for (const client of allClients) {
-            client.postMessage({ type: "SHARED_AUDIO_READY" });
-          }
         }
       } catch (err) {
         console.error("SW share-target error:", err);
       }
-      return Response.redirect("/?shared=1", 303);
+      // Rediriger vers la page avec paramètre
+      return Response.redirect("/?shared=1&t=" + Date.now(), 303);
     })());
     return;
   }
 
-  // Toujours aller chercher sur le réseau — jamais de cache pour l'app
-  e.respondWith(fetch(e.request));
+  // Servir /shared-audio depuis le cache
+  if (url.pathname === "/shared-audio") {
+    e.respondWith((async () => {
+      const cache = await caches.open(SHARE_CACHE);
+      const cached = await cache.match("/shared-audio");
+      if (cached) {
+        await cache.delete("/shared-audio");
+        return cached;
+      }
+      return new Response("Not found", { status: 404 });
+    })());
+    return;
+  }
+
+  // Tout le reste : réseau direct
+  e.respondWith(fetch(e.request).catch(() => new Response("Offline")));
 });

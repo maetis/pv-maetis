@@ -490,17 +490,17 @@ export default function App() {
   useEffect(() => {
     injectPWA();
 
-    // ── Share Target : récupérer le fichier audio partagé
+    // ── Share Target : récupérer le fichier audio via fetch /shared-audio
     const readSharedAudio = async () => {
       try {
-        const cache    = await caches.open("share-target-cache-v3");
-        const response = await cache.match("/shared-audio");
-        if (response) {
+        // Le SW expose /shared-audio comme endpoint
+        const response = await fetch("/shared-audio");
+        if (response.ok) {
           const blob = await response.blob();
           const name = decodeURIComponent(response.headers.get("X-File-Name") || "enregistrement.m4a");
-          const file = new File([blob], name, { type: blob.type });
+          const type = response.headers.get("Content-Type") || "audio/mpeg";
+          const file = new File([blob], name, { type });
           handleFile(file);
-          await cache.delete("/shared-audio");
           window.history.replaceState({}, "", "/");
         }
       } catch (e) {
@@ -510,14 +510,12 @@ export default function App() {
 
     // Déclenchement via paramètre URL (?shared=1) après redirection du SW
     if (window.location.search.includes("shared=1")) {
-      // Petit délai pour laisser le SW finir d'écrire dans le cache
-      setTimeout(readSharedAudio, 300);
+      // Délai pour laisser le SW s'activer
+      setTimeout(readSharedAudio, 500);
     }
 
-    // Déclenchement via postMessage du SW (si l'app était déjà ouverte)
-    const onMessage = (e) => {
-      if (e.data?.type === "SHARED_AUDIO_READY") readSharedAudio();
-    };
+    // Pas de postMessage nécessaire avec cette approche
+    const onMessage = (e) => {};
     navigator.serviceWorker?.addEventListener("message", onMessage);
 
     // Capture beforeinstallprompt (Android Chrome)
