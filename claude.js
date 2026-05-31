@@ -1,5 +1,5 @@
-// Vercel Serverless Function (Node.js) — pas de limite de body size
 export const config = {
+  runtime: 'nodejs',
   api: {
     bodyParser: {
       sizeLimit: '25mb',
