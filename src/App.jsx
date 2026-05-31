@@ -5,15 +5,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 function injectPWA() {
   if (document.getElementById("pwa-manifest")) return;
 
-  // Service worker minimal pour PWA installable
-  const swCode = `
-    self.addEventListener('install', e => self.skipWaiting());
-    self.addEventListener('activate', e => e.waitUntil(clients.claim()));
-    self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
-  `;
-  const swBlob = new Blob([swCode], { type: "application/javascript" });
-  const swUrl  = URL.createObjectURL(swBlob);
-  navigator.serviceWorker?.register(swUrl).catch(() => {});
+  // Service worker statique — gère aussi le share target Android
+  navigator.serviceWorker?.register("/sw.js").catch(() => {});
 
   // Manifest
   const manifest = {
@@ -496,6 +489,30 @@ export default function App() {
 
   useEffect(() => {
     injectPWA();
+
+    // ── Share Target : récupérer le fichier audio partagé depuis l'app Enregistreur
+    if (window.location.pathname === "/share-target") {
+      // Le fichier arrive via une requête POST multipart — on le récupère via Cache API
+      const handleSharedFile = async () => {
+        try {
+          const cache    = await caches.open("share-target-cache");
+          const response = await cache.match("/shared-audio");
+          if (response) {
+            const blob = await response.blob();
+            const name = decodeURIComponent(response.headers.get("X-File-Name") || "enregistrement.m4a");
+            const file = new File([blob], name, { type: blob.type });
+            handleFile(file);
+            await cache.delete("/shared-audio");
+          }
+        } catch (e) {
+          console.warn("Share target error:", e);
+        }
+        // Nettoyer l'URL sans recharger la page
+        window.history.replaceState({}, "", "/");
+      };
+      handleSharedFile();
+    }
+
     // Capture beforeinstallprompt (Android Chrome)
     const handler = (e) => { e.preventDefault(); setInstallEvt(e); setShowInstall(true); };
     window.addEventListener("beforeinstallprompt", handler);
@@ -569,17 +586,16 @@ export default function App() {
 
         {/* Top bar */}
         <div className="top-bar">
-          <span className="top-bar-icon">📝</span>
+          <img src="/logo-maetis-blanc.png" alt="Maétis" style={{height:32,maxWidth:160,objectFit:"contain"}} />
           <div>
-            <div className="top-bar-title">PV Maétis</div>
-            <div className="top-bar-sub">Procès-verbal automatique</div>
+            <div className="top-bar-sub" style={{opacity:.75,fontSize:11,marginTop:2}}>Procès-verbal automatique</div>
           </div>
         </div>
 
         {/* Install banner */}
         {showInstall && (
           <div className="install-banner">
-            <span>📲 Installer l'app sur cet appareil</span>
+            <span style={{display:"flex",alignItems:"center",gap:8}}><img src="/logo-maetis.png" alt="" style={{width:22,height:22,objectFit:"contain",filter:"brightness(0) invert(1)",opacity:.85}} /> Installer l'app sur cet appareil</span>
             {installEvt
               ? <button className="install-banner-btn" onClick={handleInstall}>Installer</button>
               : <button className="install-banner-btn" onClick={() => setShowInstall(false)}>
