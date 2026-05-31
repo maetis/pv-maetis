@@ -93,7 +93,10 @@ function sliceFile(file) {
   let start = 0;
   while (start < file.size) {
     const end = Math.min(start + size, file.size);
-    chunks.push({ blob: file.slice(start, end), index: chunks.length, byteStart: start, byteEnd: end, status: "pending", text: "" });
+    const blob = file.slice(start, end);
+    // Attacher le nom du fichier au blob pour détection MIME
+    Object.defineProperty(blob, "name", { value: file.name, writable: false });
+    chunks.push({ blob, index: chunks.length, byteStart: start, byteEnd: end, status: "pending", text: "" });
     if (end >= file.size) break;
     start = end - overlap;
   }
@@ -128,7 +131,21 @@ async function callClaude(messages, system, maxTokens = 1000) {
 
 async function transcribeChunk(chunk, mediaType, total) {
   const b64 = await blobToBase64(chunk.blob);
-  const mt = (mediaType && mediaType !== "application/octet-stream") ? mediaType : "audio/mp4";
+  // Déterminer le bon media type — Claude accepte: audio/mp4, audio/mpeg, audio/wav, audio/webm, audio/ogg, audio/flac
+  let mt = mediaType || "";
+  if (!mt || mt === "application/octet-stream" || mt === "") {
+    // Détecter via l'extension du blob
+    const name = chunk.blob.name || "";
+    if (/\.mp3$/i.test(name)) mt = "audio/mpeg";
+    else if (/\.m4a$/i.test(name)) mt = "audio/mp4";
+    else if (/\.wav$/i.test(name)) mt = "audio/wav";
+    else if (/\.ogg$/i.test(name)) mt = "audio/ogg";
+    else if (/\.webm$/i.test(name)) mt = "audio/webm";
+    else mt = "audio/mpeg";
+  }
+  // Normaliser les types connus
+  if (mt === "audio/x-m4a" || mt === "audio/m4a") mt = "audio/mp4";
+  if (mt === "audio/mp3") mt = "audio/mpeg";
   const prompt = `Transcris intégralement ce segment audio (partie ${chunk.index + 1}/${total}) en français. Reproduis fidèlement tout ce qui est dit sans résumer.`;
   return callClaude(
     [{ role: "user", content: [
