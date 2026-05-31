@@ -1,0 +1,40 @@
+# Déploiement PV Maétis sur Vercel
+# ──────────────────────────────────
+# Durée estimée : 5 à 10 minutes
+# Aucune installation requise sur l'ordinateur
+
+## Étape 1 — Créer un compte Vercel
+1. Ouvrir https://vercel.com dans le navigateur
+2. Cliquer "Sign Up"
+3. Choisir "Continue with Email" (ou GitHub si tu en as un)
+4. Vérifier l'email reçu et confirmer
+
+## Étape 2 — Déployer le dossier
+1. Sur vercel.com, cliquer le bouton "+ New Project"
+2. Cliquer "Browse" ou glisser-déposer le dossier "pv-maetis"
+   → Vercel détecte automatiquement que c'est un projet Vite/React
+3. Dans "Project Name", écrire : pv-maetis
+4. Dans "Framework Preset", vérifier que "Vite" est sélectionné
+5. Cliquer "Deploy"
+6. Attendre 1-2 minutes
+
+## Étape 3 — Ajouter la clé API Anthropic
+⚠️ ÉTAPE CRITIQUE — sans ça l'app ne transcrit pas
+
+Après le déploiement, dans le dashboard Vercel :
+1. Aller dans Settings → Environment Variables
+2. Ajouter la variable :
+   - Name  : VITE_ANTHROPIC_KEY
+   - Value : (ta clé API Anthropic, commence par "sk-ant-...")
+3. Cliquer Save
+4. Aller dans l'onglet Deployments → cliquer "Redeploy"
+
+## Étape 4 — Tester sur le smartphone
+1. Copier l'URL générée par Vercel (ex. pv-maetis.vercel.app)
+2. L'ouvrir dans Safari (iPhone) ou Chrome (Android)
+3. Ajouter à l'écran d'accueil
+4. Tester avec un enregistrement
+
+## URL finale
+Une fois déployé, note l'URL ici pour la partager à tes collaborateurs :
+https://______________________.vercel.app
