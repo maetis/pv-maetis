@@ -313,7 +313,7 @@ const css = `
 // L'API Claude accepte les fichiers audio sans décodage préalable.
 // Avantage : zéro pic mémoire, fonctionne sur tous les appareils mobiles.
 
-const CHUNK_MB = 3; // limité par la taille max du body Vercel Edge (4.5 Mo) après encodage base64
+const CHUNK_MB = 2; // base64 augmente de ~33% donc 2 Mo binaire → ~2.7 Mo → sous la limite Vercel Edge
 
 function sliceFile(file) {
   const chunkBytes = CHUNK_MB * 1024 * 1024;
