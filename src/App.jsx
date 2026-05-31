@@ -490,35 +490,45 @@ export default function App() {
   useEffect(() => {
     injectPWA();
 
-    // ── Share Target : récupérer le fichier audio partagé depuis l'app Enregistreur
-    if (window.location.pathname === "/share-target") {
-      // Le fichier arrive via une requête POST multipart — on le récupère via Cache API
-      const handleSharedFile = async () => {
-        try {
-          const cache    = await caches.open("share-target-cache");
-          const response = await cache.match("/shared-audio");
-          if (response) {
-            const blob = await response.blob();
-            const name = decodeURIComponent(response.headers.get("X-File-Name") || "enregistrement.m4a");
-            const file = new File([blob], name, { type: blob.type });
-            handleFile(file);
-            await cache.delete("/shared-audio");
-          }
-        } catch (e) {
-          console.warn("Share target error:", e);
+    // ── Share Target : récupérer le fichier audio partagé
+    const readSharedAudio = async () => {
+      try {
+        const cache    = await caches.open("share-target-cache");
+        const response = await cache.match("/shared-audio");
+        if (response) {
+          const blob = await response.blob();
+          const name = decodeURIComponent(response.headers.get("X-File-Name") || "enregistrement.m4a");
+          const file = new File([blob], name, { type: blob.type });
+          handleFile(file);
+          await cache.delete("/shared-audio");
+          window.history.replaceState({}, "", "/");
         }
-        // Nettoyer l'URL sans recharger la page
-        window.history.replaceState({}, "", "/");
-      };
-      handleSharedFile();
+      } catch (e) {
+        console.warn("Share target error:", e);
+      }
+    };
+
+    // Déclenchement via paramètre URL (?shared=1) après redirection du SW
+    if (window.location.search.includes("shared=1")) {
+      // Petit délai pour laisser le SW finir d'écrire dans le cache
+      setTimeout(readSharedAudio, 300);
     }
+
+    // Déclenchement via postMessage du SW (si l'app était déjà ouverte)
+    const onMessage = (e) => {
+      if (e.data?.type === "SHARED_AUDIO_READY") readSharedAudio();
+    };
+    navigator.serviceWorker?.addEventListener("message", onMessage);
 
     // Capture beforeinstallprompt (Android Chrome)
     const handler = (e) => { e.preventDefault(); setInstallEvt(e); setShowInstall(true); };
     window.addEventListener("beforeinstallprompt", handler);
     // iOS : afficher banner si pas en standalone
     if (window.navigator.standalone === false) setShowInstall(true);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      navigator.serviceWorker?.removeEventListener("message", onMessage);
+    };
   }, []);
 
   const handleInstall = async () => {
