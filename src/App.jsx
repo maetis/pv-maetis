@@ -354,7 +354,7 @@ function blobToBase64(blob) {
 }
 
 async function callClaude(messages, system, maxTokens = 1000) {
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+  const resp = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: maxTokens, system, messages }),
